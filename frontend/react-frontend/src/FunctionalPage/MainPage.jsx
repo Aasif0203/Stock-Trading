@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import NavBar from './NavBar.jsx'
 import './FunctionalPage.css'
 // You need to import your components
@@ -12,7 +12,7 @@ import Positions from './Different pages/Positions.jsx'
 export default function MainPage(){
   return(
     <div className='mainpage' style={{flexGrow:2}}>
-      <Router>
+      <BrowserRouter>
         <NavBar />
         <Routes>
           <Route exact path="/" element={<Home />} />
@@ -20,8 +20,9 @@ export default function MainPage(){
           <Route path="/Funds" element={<Funds />} />
           <Route path="/Holdings" element={<Holdings />} />
           <Route path="/Positions" element={<Positions />} />
+          <Route path="/*" element={<Home />} />
         </Routes>
-      </Router>
+      </BrowserRouter>
     </div>
   )
 }

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
-import axios, { all } from "axios";
 import { VerticalGraph } from "./VerticalGraph";
+import axios, { all } from "axios";
 
-// import { holdings } from "../data/data";cl
+// import { holdings } from "../data/data";
 
 export default function Holdings(){
   const [allHoldings, setAllHoldings] = useState([]);
 
   useEffect(() => {
     axios.get("http://localhost:3002/allHoldings").then((res) => {
-      // console.log(res.data);
+      console.log(res.data);
       setAllHoldings(res.data);
     });
   }, []);
@@ -51,7 +51,7 @@ export default function Holdings(){
       <div className="order-table">
         <table>
           <tr>
-            <th>Instrument</th>
+            <th style={{borderRight:'1px solid grey'}}>Instrument</th>
             <th>Qty.</th>
             <th>Avg. cost</th>
             <th>LTP</th>
@@ -69,7 +69,7 @@ export default function Holdings(){
 
             return (
               <tr key={index}>
-                <td>{stock.name}</td>
+                <td style={{borderRight:'1px solid grey'}}>{stock.name}</td>
                 <td>{stock.qty}</td>
                 <td>{stock.avg.toFixed(2)}</td>
                 <td>{stock.price.toFixed(2)}</td>

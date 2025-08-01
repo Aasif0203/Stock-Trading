@@ -1,3 +1,29 @@
 #WatchListTab{
   min-width: 500px;
+  overflow-y: scroll;
+}
+#WatchListTab>ul{
+  background-color: rgb(73, 72, 72);
+  margin: 5px;
+  border-radius: 2rem;
+  padding: 10px;
+}
+.watchListItem{
+  border-bottom:1px dotted white;
+
+  display: flex;
+  justify-content: end;
+  align-items: center;
+}
+.watchListItem>.stkname{
+  margin-right: auto;
+
+}
+.stockDown{
+  margin: 6px;
+  color: red;
+}
+.stockUp{
+  margin: 6px;
+  color: green;
 }
