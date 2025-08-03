@@ -7,3 +7,8 @@ Post-signup we enter a kite kinda dashboard where we can add watchlist of stocks
 
 
 ### Using Vite+React Application for frontend here!!
+
+Extensive use of React MUI ✅
+Graphs are plotted using *react-chartjs-2* which is a React open-source library
+
+### For Backend : Mongodb with Express used
