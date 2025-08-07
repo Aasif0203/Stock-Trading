@@ -1,9 +1,11 @@
-# Summer-Project
+# Stock Trading Dashboard
 
-## Web Application 
-Goal is to create a landing-page(want to make it close to Zerodha homepage) first with sign-up feature
-Post-signup we enter a kite kinda dashboard where we can add watchlist of stocks, buy and sell holdings, track the orders show a pie-chart kinda structure.
- Also need to find a good API for live stock market data in India(Only paid API are there but lets go with it).
+## A Full-Stack Web Application Project
 
 
 ### Using Vite+React Application for frontend here!!
+
+Extensive use of React MUI ✅
+Graphs are plotted using *react-chartjs-2* which is a React open-source library
+
+### For Backend : Mongodb with Express used
