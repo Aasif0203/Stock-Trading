@@ -1,8 +1,11 @@
 const {Schema} = require('mongoose');
 
-const HoldingsSchema = new Schema({
+exports.OrderSchema = new Schema({
   name: String,
   qty:Number,
   price: Number,
-  mode: String
+  mode: String,
+  isPending:Boolean,
+  time: String,
+  day:String
 });

@@ -1,0 +1,81 @@
+const express = require('express');
+const router = express.Router();
+const {watchlist} = require('../models/WatchListModel');
+const finnhub = require('finnhub');
+const finnhubClient = new finnhub.DefaultApi(process.env.FINNHUB_API_KEY);
+
+router.get('/watchlist', async (req,res)=>{
+  res.json(await watchlist.find({}));
+})
+// UPDATE ALL DATA in WatchList
+router.put('/watchlist', async (req, res) => {
+  try {
+    const symbols = await watchlist.find({}).select('name -_id');
+    await Promise.all(
+      symbols.map(async ({ name }) => {
+        return new Promise((resolve, reject) => {
+          finnhubClient.quote(name, async (error, data) => {
+            try {
+              if (error) {
+                reject(error);
+              } else {
+                await watchlist.updateOne(
+                  { name },
+                  {
+                    currentPrice: data.c,
+                    percentChange: data.d,
+                    highPrice: data.h,
+                    lowPrice: data.l,
+                    openPrice: data.o,
+                    previousClose: data.pc,
+                    isLoss: data.d < 0,
+                  }
+                );
+                resolve();
+              }
+            } catch (updateError) {
+              reject(updateError);
+            }
+          });
+        });
+      })
+    );
+    res.json({ message: 'Watchlist updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/watchlist/:symbol', async (req,res)=>{
+  let { symbol } = req.params;
+  // Check if symbol already exists
+  const existingSymbol = await watchlist.findOne({ name: symbol });
+  if (existingSymbol) {
+    return res.status(400).json({ error: 'Symbol already exists in watchlist' });
+  }
+
+  const stockData = await new Promise((resolve, reject) => {
+    finnhubClient.quote(symbol, (error, data) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+  if(stockData.d==null) return res.status(400).json({ error: 'Symbol not found' });
+  
+  let newWatchList = new watchlist({
+    name: symbol,
+    currentPrice: stockData.c,
+    percentChange: stockData.d,
+    highPrice: stockData.h,
+    lowPrice: stockData.l,
+    openPrice: stockData.o,
+    previousClose: stockData.pc,
+    isLoss: (stockData.d < 0),
+  });
+
+  const savedItem = await newWatchList.save();
+});
+module.exports = router;
