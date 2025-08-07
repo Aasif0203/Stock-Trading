@@ -20,6 +20,14 @@
   display: flex;
   justify-content: space-between;
 }
+#root>div{
+  margin: 7px;
+  padding-top: 7px;
+  border: white;
+  border-radius: 1rem;
+  background-color: #242424;
+  height: 98vh;
+}
 
 a {
   font-weight: 500;

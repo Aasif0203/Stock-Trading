@@ -19,7 +19,7 @@ export default function MainPage(){
           <Route path="/Orders" element={<Orders />} />
           <Route path="/Funds" element={<Funds />} />
           <Route path="/Holdings" element={<Holdings />} />
-          <Route path="/Positions" element={<Positions />} />
+          {/* <Route path="/Positions" element={<Positions />} /> */}
           <Route path="/*" element={<Home />} />
         </Routes>
       </BrowserRouter>

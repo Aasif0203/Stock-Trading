@@ -9,6 +9,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import { fontSize } from "@mui/system";
 
 ChartJS.register(
   CategoryScale,
@@ -28,6 +29,25 @@ export const options = {
     title: {
       display: true,
       text: "Holdings",
+      color: 'rgba(249, 246, 242, 1)'
+    },
+  },
+  scales: {
+    x: {
+      grid: {
+        color: 'rgba(255, 255, 255, 0.3)',
+      },
+      ticks: {
+        color: 'white',
+      },
+    },
+    y: {
+      grid: {
+        color: 'rgba(255, 255, 255, 0.3)',
+      },
+      ticks: {
+        color: 'white',
+      },
     },
   },
 };

@@ -46,8 +46,8 @@ function ResponsiveAppBar() {
           <Link key="1" to="/Orders" onClick= {() =>{handleOpenNavMenu(1)}} >
             <p className = {anchorElNav===1? 'activeMenu':'justMenu'}>Orders</p>
           </Link>
-          <Link key="2" to="/Positions" onClick= {() =>{handleOpenNavMenu(2)}} >
-            <p className = {anchorElNav===2? 'activeMenu':'justMenu'}>Positions</p>
+          <Link key="2" to="/Prediction" onClick= {() =>{handleOpenNavMenu(2)}} >
+            <p className = {anchorElNav===2? 'activeMenu':'justMenu'}>Predictions</p>
           </Link>
           <Link key="3" to="/Holdings" onClick= {() =>{handleOpenNavMenu(3)}} >
             <p className = {anchorElNav===3? 'activeMenu':'justMenu'}>Holdings</p>

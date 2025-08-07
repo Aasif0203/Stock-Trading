@@ -1,55 +1,97 @@
 import './WatchList.css';
-import {watchlist} from '../data.jsx';
-import { useState } from 'react';
-import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import Tooltip from '@mui/material/Tooltip';
+import axios from 'axios';
+import { useState, useEffect } from 'react';
+
 import Button from '@mui/material/Button';
+import BuyWindow from './BuyWindow.jsx';
+import SellWindow from './SellWindow.jsx';
+import WatchListItem from './Item&Action.jsx'
+import {DoughnutChart} from './DoughnutChart.jsx';
+import { Header } from './Header.jsx';
+
 
 export default function WatchList(){
+  let [buyUID,setBuyUID] = useState(null);
+  let [sellUID,setSellUID] = useState(null);
+  const [loading, setLoading] = useState(false);
+  let [watchlist,setWatchList] = useState([]);
+  let [pending,setPending] = useState(false);
+
+  let BuyTriggered = (uid,pending)=>{
+    setBuyUID(uid);
+    if(pending) setPending(true);
+    setSellUID(null);
+  }
+  let closeBuyWindow = ()=>{
+    setBuyUID(null);
+    setPending(false);
+  }
+  let SellTriggered = (uid)=>{
+    setBuyUID(null);
+    setSellUID(uid);
+  }
+  let closeSellWindow = ()=>{
+    setSellUID(null);
+  }
+  
+  const generateRandomColor = (alpha = 0.2) => {
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  // Generate colors based on watchlist length
+  const generateColors = (count, alpha) => {
+    return Array.from({ length: count }, () => generateRandomColor(alpha));
+  };
+
+  const data = {
+    labels: watchlist.map((data)=>data.name),
+    datasets: [
+      {
+        label: 'Price',
+        data: watchlist.map((data)=>data.currentPrice),
+        backgroundColor: generateColors(watchlist.length, 0.5),
+        borderColor: generateColors(watchlist.length, 1),
+        borderWidth: 1.5,
+      },
+    ],
+  };
+
+  // Fetch multiple stocks concurrently
+  const fetchMultipleStocks = async () => {
+    setLoading(true);
+    try {
+      await axios.put('http://localhost:3001/watchlist');
+      const res = await axios.get('http://localhost:3001/watchlist');
+      setWatchList(res.data);
+    } catch (error) {
+      console.error('Error fetching watchlist:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMultipleStocks();
+  }, []);
+
+
   return (
     <div id="WatchListTab" style={{flexGrow:1}} >
-      <ul className='list' >
+      <br/>
+      <Header loading={loading} handleRefresh={fetchMultipleStocks} />
+      <ul >
         {
           watchlist.map((stock, idx) => (
-            <WatchListItem stock={stock} key={idx}/>
+            <WatchListItem stock={stock} key={idx} onBuyTriggered={BuyTriggered} onSellTriggered={SellTriggered} />
           ))
         }
       </ul>
-    </div>
-  )
-}
-function WatchListItem({stock}){
-  let [showMouse, SetShowMouse] = useState(false);
-
-  let handleMouseEvent = (e)=>{
-    SetShowMouse(!showMouse);
-  }
-
-  return (
-    <li className='watchListItem' style={{listStyleType:'none', position:'relative'}} onMouseEnter={handleMouseEvent} onMouseLeave={handleMouseEvent}>
-      <p className='stkname'>{stock.name} </p>
-      <p style={{opacity:'0.5'}} className={stock.isDown? "stockDown":"stockUp"}>{stock.percent} </p>
-      {stock.isDown? <ArrowDropDownIcon style={{color: 'red'}} />:<ArrowDropUpIcon style={{color: 'green'}}/>}
-      <p style={{fontSize:'13px', fontFamily:'sans-serif'}}>{stock.price} </p>
-      {showMouse && <WatchListActions uid={stock.name}/> }
-    </li>
-  )
-}
-
-function WatchListActions({uid}){
-  return (
-    <div style={{ position: 'absolute',right:130, zIndex: 10 }}>
-      <Tooltip title={`Buy ${uid} stock`} placement="top">
-        <Button variant="contained" color='primary' size="small" style={{margin:'2px'}}>
-          Buy
-        </Button>
-      </Tooltip>
-      <Tooltip title={`Sell ${uid} stock`} placement="top">
-        <Button variant="contained" color='error' size="small" style={{margin:'2px'}}>
-          Sell
-        </Button>
-      </Tooltip>
+      {buyUID && <BuyWindow uid={buyUID} actualprice={watchlist.find(stock => stock.name === buyUID)?.currentPrice} pending={pending} onClose={closeBuyWindow}/>}
+      {sellUID && <SellWindow uid={sellUID} onClose={closeSellWindow}/>} <br/><hr/>
+      <DoughnutChart data={data} />
     </div>
   )
 }

@@ -1,16 +1,52 @@
 #WatchListTab{
-  min-width: 500px;
+  /* padding: 25px 8px; */
+  min-width: 5px;
   overflow-y: scroll;
+  width: 24%;
+  max-width: 600px;
+  
 }
 #WatchListTab>ul{
   background-color: rgb(73, 72, 72);
-  margin: 5px;
-  border-radius: 2rem;
-  padding: 10px;
+  margin: 0px 5px;
+  border-radius: 0rem 0rem 1rem 1rem ;
+  padding: 30px 10px 10px 10px;
+  max-height: 700px;
+  overflow-y: auto;
+}
+.Header{
+  padding: 5px;
+  height :100px;
+  border-radius: 1rem 1rem 0rem 0rem ;
+  background-color: #B7C3F3;
+  margin: 0px 5px;
+}
+.Header>h2{
+  font-family: sans-serif;
+  color: darkgreen;
+  /* Professional glitter effect for dark theme */
+  background: linear-gradient(90deg, #00c6fb, #005bea, #00c6fb, #43e97b, #38f9d7);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 8px rgba(0, 198, 251, 0.3);
+  animation: glitter 3s linear infinite;
+  position: relative;
+}
+
+@keyframes glitter {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.Header>div{
+  display: flex;
+  /* flex-grow: 1; */
+  justify-content: space-around;
 }
 .watchListItem{
   border-bottom:1px dotted white;
-
+  
   display: flex;
   justify-content: end;
   align-items: center;
@@ -26,4 +62,10 @@
 .stockUp{
   margin: 6px;
   color: green;
+}
+.BuyWindow > input{
+  transform: scale(1.3);
+  height: 2rem; width: 5.5rem;
+  margin: 20px 30px;
+  /* height: 2rem; */
 }

@@ -1,0 +1,33 @@
+.buybox {
+  border: dashed green;
+  margin: 20px 80px;
+  height: 70px;
+  border-radius: 10px;
+  background-color: rgba(128, 128, 128,0.3) ;
+  display: flex;
+  justify-content: space-around;
+}
+.pendingbox{
+  border: dashed orange;
+  margin: 20px 80px;
+  height: 70px;
+  border-radius: 10px;
+  background-color: rgba(128, 128, 128,0.3) ;
+  display: flex;
+  justify-content: space-around;
+}
+.sellbox{
+  border: dashed red;
+  margin: 20px 80px;
+  height: 70px;
+  border-radius: 10px;
+  background-color: rgba(128, 128, 128,0.3) ;
+  display: flex;
+  justify-content: space-around;
+}
+
+.Orders .qty{
+  border: solid aqua;
+  border-radius: 10px;
+  padding: 10px;
+}

@@ -30,7 +30,8 @@
   text-align: start;
 }
 .mainpage{
-  overflow-y: scroll;
+  overflow-y: auto;
+  padding: 7px 15px 0px 10px
 }
 .data{
   display: flex;

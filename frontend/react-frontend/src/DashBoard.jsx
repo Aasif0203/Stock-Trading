@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './DashBoard.css'
 import MainPage from './FunctionalPage/MainPage'
 import WatchList from './WatchList/WatchList'
 
