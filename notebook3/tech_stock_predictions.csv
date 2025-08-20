@@ -1,0 +1,6 @@
+Prediction Date,Ticker,Best Model,Predicted Close
+2025-08-15,AAPL,Linear Regression,232.76
+2025-08-15,MSFT,Stacking,523.06
+2025-08-15,AMZN,Linear Regression,231.32
+2025-08-15,GOOGL,Linear Regression,202.95
+2025-08-15,TSLA,Lasso Regression,335.44
