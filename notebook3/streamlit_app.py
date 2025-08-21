@@ -33,6 +33,17 @@ st.caption("Enter a stock ticker, load historical data, AutoML-train (if needed)
 warnings.filterwarnings("ignore")
 
 # -------------------------------
+# Trading Day Utilities
+# -------------------------------
+def get_next_trading_day(dt: pd.Timestamp) -> pd.Timestamp:
+    """Return the next trading day after dt (skips weekends)."""
+    next_day = dt + pd.Timedelta(days=1)
+    # Skip Saturday (5) and Sunday (6)
+    while next_day.weekday() >= 5:
+        next_day += pd.Timedelta(days=1)
+    return next_day
+
+# -------------------------------
 # Sidebar Inputs
 # -------------------------------
 with st.sidebar:
@@ -43,8 +54,7 @@ with st.sidebar:
     ticker = st.text_input("Ticker (e.g., ADBE, AAPL, GOOG)", value="ADBE").upper().strip()
     train_button = st.button("🚀 Load & Train (if needed)")
 
-# Today's date string for model filename
-TODAY_STR = datetime.today().strftime("%Y%m%d")  # e.g., 20250817
+# Note: Models are saved/loaded as {ticker}.joblib
 
 # -------------------------------
 # Utility: Data Download (cached)
@@ -146,11 +156,28 @@ def main():
         colA.warning("Please enter a ticker symbol.")
         return
 
+    # Always fetch data through today's date for training/prediction
+    effective_end = date.today()
+
     # Load data
     with st.spinner("Downloading historical data…"):
-        df = load_data(ticker, str(start_date), str(end_date))
+        df = load_data(ticker, str(start_date), str(effective_end))
+        # Also fetch raw OHLC including the latest available day for correct last close display
+        raw_end_plus_one = pd.to_datetime(effective_end) + pd.Timedelta(days=1)
+        raw = yf.download(
+            ticker,
+            start=str(start_date),
+            end=str(raw_end_plus_one.date()),
+            progress=False,
+            auto_adjust=False,
+        )
+        try:
+            raw.columns = raw.columns.get_level_values(0)
+        except Exception:
+            pass
+        raw = raw.loc[:, ["Open", "High", "Low", "Close"]].reset_index()
 
-    if df.empty or len(df) < 60:
+    if df.empty or len(df) < 60 or raw.empty:
         colA.error("No data (or too little data). Try a different ticker or wider date range.")
         return
 
@@ -158,38 +185,36 @@ def main():
     X = df[features]
     y = df["Next_Close"]
 
-    model_path = f"{ticker}_{TODAY_STR}.joblib"
+    model_path = f"{ticker}.joblib"
 
-    # Load or Train
-    model_loaded = False
-    if os.path.exists(model_path):
-        try:
-            final_pipeline = joblib.load(model_path)
-            model_loaded = True
-        except Exception:
-            model_loaded = False
-
+    # Load or Train (auto-train if missing; button forces retrain)
     results_df = None
     best_model_name = None
+    final_pipeline = None
 
-    if not model_loaded:
-        if train_button:
-            with st.spinner("Training models (AutoML)…"):
-                results_df, best_model_name, final_pipeline = evaluate_and_select_model(X, y, features)
-                joblib.dump(final_pipeline, model_path)
+    if os.path.exists(model_path) and not train_button:
+        try:
+            final_pipeline = joblib.load(model_path)
+            st.success(f"Loaded saved model: {os.path.basename(model_path)}")
+        except Exception:
+            final_pipeline = None
+
+    if final_pipeline is None:
+        with st.spinner("Training models (AutoML)…"):
+            results_df, best_model_name, final_pipeline = evaluate_and_select_model(X, y, features)
+            joblib.dump(final_pipeline, model_path)
+            if train_button:
+                st.success(f"Model retrained and saved as {os.path.basename(model_path)}")
+            else:
                 st.success(f"Model trained and saved as {os.path.basename(model_path)}")
-        else:
-            st.info("No saved model found for today. Click **Load & Train (if needed)** to train.")
-            return
-    else:
-        st.success(f"Loaded saved model: {os.path.basename(model_path)}")
 
     # Current (last close) and Prediction
-    latest_features = df[features].iloc[-1:]
+    # Use the most recent raw OHLC row to display last close and to predict the next trading day's close
+    latest_features = raw[features].iloc[-1:]
     next_day_prediction = float(final_pipeline.predict(latest_features)[0])
-    last_close = float(df["Close"].iloc[-1])
-    last_date = pd.to_datetime(df["Date"].iloc[-1])
-    next_date = last_date + pd.Timedelta(days=1)
+    last_close = float(raw["Close"].iloc[-1])
+    last_date = pd.to_datetime(raw["Date"].iloc[-1])
+    next_date = get_next_trading_day(last_date)
 
     # Metrics
     col1, col2, col3 = st.columns(3)
@@ -207,7 +232,7 @@ def main():
 
     # Chart: historical close + predicted point
     st.subheader(f"{ticker} — Last Close and Predicted Next Close")
-    plot_df = df[["Date", "Close"]].copy()
+    plot_df = raw[["Date", "Close"]].copy()
     pred_row = pd.DataFrame({"Date": [next_date], "Close": [next_day_prediction]})
     plot_df = pd.concat([plot_df, pred_row], ignore_index=True)
 
@@ -224,7 +249,7 @@ def main():
 
     # Raw data expander
     with st.expander("Show raw data"):
-        st.dataframe(df.tail(20), use_container_width=True)
+        st.dataframe(raw.tail(20), use_container_width=True)
 
 
 if __name__ == "__main__":

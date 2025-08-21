@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 import joblib
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import yfinance as yf
 from datetime import datetime
+from typing import List, Optional
+import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
@@ -44,6 +46,14 @@ class PredictionResponse(BaseModel):
     change: float
     change_percent: float
     model_used: str
+
+class TomorrowPrediction(BaseModel):
+    ticker: str
+    tomorrow_date: str
+    predicted_next_close: float
+
+class TomorrowBatchResponse(BaseModel):
+    predictions: List[TomorrowPrediction]
 
 def find_model_file(ticker: str, models_dir: Path) -> Path:
     """Find the model file for a ticker, handling different naming patterns."""
@@ -88,6 +98,13 @@ def fetch_latest_ohlc(ticker: str, start_date: str = "2020-01-01", end_date: str
 
     return df
 
+def get_next_trading_day(dt: pd.Timestamp) -> pd.Timestamp:
+    """Return the next trading day after dt (skips weekends)."""
+    next_day = dt + pd.Timedelta(days=1)
+    while next_day.weekday() >= 5:
+        next_day += pd.Timedelta(days=1)
+    return next_day
+
 @app.get("/")
 def home():
     """Welcome endpoint."""
@@ -97,6 +114,7 @@ def home():
         "endpoints": [
             "/predict/{ticker}",
             "/predict",
+            "/predict/tomorrow",
             "/models"
         ]
     }
@@ -168,6 +186,51 @@ def predict_stock(ticker: str, start_date: str = "2020-01-01", end_date: str = N
 def predict_stock_post(request: StockRequest):
     """Predict next day's stock price using POST request."""
     return predict_stock(request.ticker, request.start_date, request.end_date)
+
+@app.get("/predict/tomorrow", response_model=TomorrowBatchResponse)
+def predict_tomorrow(
+    tickers: Optional[str] = Query(None, description="Comma-separated list of tickers. Defaults to preset list."),
+    start_date: str = "2020-01-01",
+    end_date: str = None,
+):
+    """Return tomorrow's date and predicted next close for one or more tickers.
+
+    - If no tickers provided, uses default TICKERS list.
+    - Tomorrow date is computed as last available date + 1 day (calendar day).
+    """
+    symbols: List[str] = [t.strip().upper() for t in tickers.split(",")] if tickers else TICKERS
+
+    predictions: List[TomorrowPrediction] = []
+    errors = []
+
+    for symbol in symbols:
+        try:
+            model_path = find_model_file(symbol, MODELS_DIR)
+            pipeline = load_model(model_path)
+
+            df = fetch_latest_ohlc(symbol, start_date, end_date)
+            latest_features = df[FEATURES].iloc[-1:].copy()
+            pred = float(pipeline.predict(latest_features)[0])
+
+            last_date = df.index[-1]
+            if not isinstance(last_date, pd.Timestamp):
+                last_date = pd.to_datetime(last_date)
+            tomorrow_dt = get_next_trading_day(last_date)
+            tomorrow_str = tomorrow_dt.strftime("%Y-%m-%d")
+
+            predictions.append(TomorrowPrediction(
+                ticker=symbol,
+                tomorrow_date=tomorrow_str,
+                predicted_next_close=round(pred, 2),
+            ))
+        except Exception as e:
+            errors.append({"ticker": symbol, "error": str(e)})
+
+    if not predictions and errors:
+        # If everything failed, surface first error
+        raise HTTPException(status_code=400, detail=errors[0])
+
+    return {"predictions": predictions}
 
 if __name__ == "__main__":
     import uvicorn
