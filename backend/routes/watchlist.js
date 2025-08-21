@@ -51,7 +51,7 @@ router.post('/watchlist/:symbol', async (req,res)=>{
   // Check if symbol already exists
   const existingSymbol = await watchlist.findOne({ name: symbol });
   if (existingSymbol) {
-    return res.status(400).json({ error: 'Symbol already exists in watchlist' });
+    throw new Error('Stock already exists !!');
   }
 
   const stockData = await new Promise((resolve, reject) => {
@@ -63,7 +63,7 @@ router.post('/watchlist/:symbol', async (req,res)=>{
       }
     });
   });
-  if(stockData.d==null) return res.status(400).json({ error: 'Symbol not found' });
+  if(stockData.d==null) throw new Error('Stock ticker not found !');
   
   let newWatchList = new watchlist({
     name: symbol,
@@ -77,5 +77,13 @@ router.post('/watchlist/:symbol', async (req,res)=>{
   });
 
   const savedItem = await newWatchList.save();
+  res.status(201).json(savedItem); 
 });
+
+router.post('/deleteWatchlist/:name', async (req, res) => {
+  let { name } = req.params;
+  await watchlist.findOneAndDelete({ name });
+  console.log("deleted!!");
+  res.sendStatus(204);
+})
 module.exports = router;

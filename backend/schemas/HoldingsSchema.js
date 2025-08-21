@@ -5,7 +5,7 @@ const HoldingsSchema = new Schema({
   qty:{
     type:Number
   },
-  avg: Number,
+  invested: Number,
   price: Number,
   net: String,
   day: String,

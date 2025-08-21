@@ -12,15 +12,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-const holdingsRoutes = require('./routes/holdings');
+const {holding} = require('./routes/holdings');
 const ordersRoutes = require('./routes/orders');
 const watchlistRoutes = require('./routes/watchlist');
-const pendingRoutes = require('./routes/pending');
+const {pending} = require('./routes/pending');
 
-app.use('/',holdingsRoutes);
+// Import cronService to start the scheduled tasks
+require('./services/cronService');
+
+app.use('/',holding);
 app.use('/',ordersRoutes);
 app.use('/',watchlistRoutes);
-app.use('/',pendingRoutes);
+app.use('/',pending);
 
 app.listen(3001,()=>{
   console.log(`app connection successful in PORT ${PORT}`);
