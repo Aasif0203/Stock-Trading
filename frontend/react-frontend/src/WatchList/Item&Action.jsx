@@ -4,8 +4,9 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import Tooltip from '@mui/material/Tooltip';
+import PlaylistRemoveOutlinedIcon from '@mui/icons-material/PlaylistRemoveOutlined';
 
-export default function WatchListItem({stock,onBuyTriggered,onSellTriggered}){
+export default function WatchListItem({stock,onBuyTriggered,deleteWatchlist}){
   let [showMouse, SetShowMouse] = useState(false);
 
   let handleMouseEvent = (e)=>{
@@ -17,12 +18,12 @@ export default function WatchListItem({stock,onBuyTriggered,onSellTriggered}){
       <p style={{opacity:'0.7'}} className={stock.isLoss? "stockDown":"stockUp"}>{stock.percentChange}% </p>
       {stock.isLoss? <ArrowDropDownIcon style={{color: 'red'}} />:<ArrowDropUpIcon style={{color: 'green'}}/>}
       <p style={{fontSize:'13px', fontFamily:'sans-serif'}}>{stock.currentPrice} </p>
-      {showMouse && <WatchListActions stockname={stock.name} onBuyTriggered ={onBuyTriggered} onSellTriggered={onSellTriggered} /> }
+      {showMouse && <WatchListActions stockname={stock.name} onBuyTriggered ={onBuyTriggered} deleteWatchlist={deleteWatchlist} /> }
     </li>
   )
 }
 
-function WatchListActions({stockname,onBuyTriggered,onSellTriggered}){
+function WatchListActions({stockname,onBuyTriggered,deleteWatchlist }){
   return (
     <div style={{ position: 'absolute',right:140, zIndex: 10 }}>
       <Tooltip title={`Buy ${stockname} for Market Price`} placement="top">
@@ -30,14 +31,15 @@ function WatchListActions({stockname,onBuyTriggered,onSellTriggered}){
           Buy
         </Button>
       </Tooltip>
-      <Tooltip title={`Sell ${stockname} stock`} placement="top">
-        <Button variant="contained" color='error' size="small" style={{margin:'2px'}} onClick={()=>onSellTriggered(stockname)}>
-          Sell
-        </Button>
-      </Tooltip>
+      
       <Tooltip title={`Buy ${stockname} with Limit`} placement="top">
         <Button variant="contained" color='white' size="small" style={{margin:'2px'}} onClick={()=>onBuyTriggered(stockname,true)}>
           <ShoppingCartIcon/>
+        </Button>
+      </Tooltip>
+      <Tooltip title={`Remove ${stockname} from watchlist`} placement="top">
+        <Button variant="contained" color='error' size="small" style={{margin:'2px'}} onClick={()=>deleteWatchlist(stockname)}> 
+          <PlaylistRemoveOutlinedIcon />
         </Button>
       </Tooltip>
     </div>

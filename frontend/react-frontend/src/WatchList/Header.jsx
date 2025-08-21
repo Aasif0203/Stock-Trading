@@ -5,21 +5,23 @@ import TextField from '@mui/material/TextField';
 import { useState } from 'react';
 import axios from 'axios';
 
-export function Header({loading,handleRefresh}){
+export function Header({loading,setLoading,handleRefresh}){
   let [ticker,setTicker] = useState('');
   let [error,setError] = useState(null);
-  let addStock = async ()=>{
+  let addStock = async (e)=>{
+     e.preventDefault(); 
+    
+    setLoading(true);
     try {
-      let response = await axios.post(`http://localhost:3001/watchlist/${ticker}`);
+      await axios.post(`http://localhost:3001/watchlist/${ticker}`);
+      await handleRefresh();
       setError(null);
-      handleRefresh();
+      setTicker('');
+      
     } catch (error) {
-      // Access the error message from the server response
-      if (error.response && error.response.data && error.response.data.error) {
-        setError(error.response.data.error);
-      } else {
-        setError('An error occurred while adding the stock');
-      }
+      const errorMessage = error.response?.data?.error || 'Something went wrong';
+      setError(errorMessage);
+      setLoading(false);
     }
   }
   return (
@@ -29,8 +31,15 @@ export function Header({loading,handleRefresh}){
         <Button style={{height:'36px'}} size='small' loading={loading} variant="contained" onClick={()=>handleRefresh()}>
           <b>Refresh</b> <RefreshIcon />
         </Button>
-        <form onSubmit={e => { e.preventDefault(); addStock(); }}>
-          <TextField onChange={e=> setTicker(e.target.value)} size='small' label="Enter Stock Ticker" variant="filled" focused /> &nbsp;&nbsp;&nbsp;
+        <form onSubmit={addStock} >
+          <TextField 
+            value={ticker}
+            onChange={e=> setTicker(e.target.value)} 
+            size='small' 
+            label="Enter Stock Ticker" 
+            variant="filled" 
+            focused 
+          /> &nbsp;&nbsp;&nbsp;
           <Button variant='contained' type='submit'><AddIcon /> </Button>
         </form>
       </div>

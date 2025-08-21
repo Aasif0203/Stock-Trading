@@ -16,7 +16,7 @@ export default function BuyWindow({uid,actualprice,onClose,pending}){
       mode:"BUY",
       qty:qty,
       pending:pending,
-    });
+    })
     
   };
   

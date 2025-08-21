@@ -6,12 +6,11 @@ import { useState } from 'react';
 
 export default function SellWindow({uid,onClose}){
   let [qty,setQTY] = useState(1);
-  let [price,setPrice] = useState(0.1);
-
+  
   let enterSell = ()=>{
+    
     axios.post('http://localhost:3001/addOrder',{
       name:uid,
-      price:price,
       mode:"SELL",
       qty:qty,
       pending:false,
@@ -19,21 +18,41 @@ export default function SellWindow({uid,onClose}){
     onClose();
   }
   return (
-    <div className='BuyWindow'>
-      <h3>{uid}</h3>
-      <label htmlFor="qty">Quantity : </label>
-      <input
-        type="number"
-        id="qty"
-        placeholder='Quantity'
-        value={qty}
-        min="1"
-        onChange={e => setQTY(Number(e.target.value))}
-      />
-      <ButtonGroup variant="outlined"  size='large' aria-label="Large button group">
-        <Button color='error' onClick={()=>enterSell()}>Sell</Button>
-        <Button onClick={()=>onClose()}><CloseOutlinedIcon/> Cancel</Button>
-      </ButtonGroup>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(238, 2, 2, 0.3)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div className='BuyWindow' style={{
+        backgroundColor: 'black',
+        padding: '20px',
+        borderRadius: '8px',
+        minWidth: '300px',
+        textAlign: 'center'
+      }}>
+        <h3>{uid}</h3>
+        <label htmlFor="qty">Quantity : </label>
+        <input
+          type="number"
+          id="qty"
+          placeholder='Quantity'
+          value={qty}
+          min="1"
+          onChange={e => setQTY(Number(e.target.value))}
+        />
+        <br/><br/>
+        <ButtonGroup variant="outlined"  size='large' aria-label="Large button group">
+          <Button color='error' onClick={()=>enterSell()}>Sell</Button>
+          <Button onClick={()=>onClose()}><CloseOutlinedIcon/> Cancel</Button>
+        </ButtonGroup>
+      </div>
     </div>
   )
 }

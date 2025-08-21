@@ -9,31 +9,33 @@ import WatchListItem from './Item&Action.jsx'
 import {DoughnutChart} from './DoughnutChart.jsx';
 import { Header } from './Header.jsx';
 
+// Exported SellTriggered function
+export const SellTriggered = (setSellUID, setBuyUID) => (uid) => {
+  setBuyUID(null);
+  setSellUID(uid);
+};
 
-export default function WatchList(){
-  let [buyUID,setBuyUID] = useState(null);
-  let [sellUID,setSellUID] = useState(null);
+function WatchList() {
+  const [buyUID, setBuyUID] = useState(null);
+  const [sellUID, setSellUID] = useState(null);
   const [loading, setLoading] = useState(false);
-  let [watchlist,setWatchList] = useState([]);
-  let [pending,setPending] = useState(false);
+  const [watchlist, setWatchList] = useState([]);
+  const [pending, setPending] = useState(false);
 
-  let BuyTriggered = (uid,pending)=>{
+  const BuyTriggered = (uid, pendingFlag) => {
     setBuyUID(uid);
-    if(pending) setPending(true);
+    if (pendingFlag) setPending(true);
     setSellUID(null);
-  }
-  let closeBuyWindow = ()=>{
+  };
+  const closeBuyWindow = () => {
     setBuyUID(null);
     setPending(false);
-  }
-  let SellTriggered = (uid)=>{
-    setBuyUID(null);
-    setSellUID(uid);
-  }
-  let closeSellWindow = ()=>{
+  };
+  const sellTriggered = SellTriggered(setSellUID, setBuyUID);
+  const closeSellWindow = () => {
     setSellUID(null);
-  }
-  
+  };
+
   const generateRandomColor = (alpha = 0.2) => {
     const r = Math.floor(Math.random() * 256);
     const g = Math.floor(Math.random() * 256);
@@ -72,20 +74,24 @@ export default function WatchList(){
       setLoading(false);
     }
   };
+  let deleteWatchlist = async (name) => {
+    await axios.post(`http://localhost:3001/deleteWatchlist/${name}`);
+    await fetchMultipleStocks();
+  }
 
   useEffect(() => {
     fetchMultipleStocks();
-  }, []);
+  },[]);
 
 
   return (
     <div id="WatchListTab" style={{flexGrow:1}} >
       <br/>
-      <Header loading={loading} handleRefresh={fetchMultipleStocks} />
+      <Header loading={loading} setLoading={setLoading} handleRefresh={fetchMultipleStocks} />
       <ul >
         {
           watchlist.map((stock, idx) => (
-            <WatchListItem stock={stock} key={idx} onBuyTriggered={BuyTriggered} onSellTriggered={SellTriggered} />
+            <WatchListItem stock={stock} key={idx} onBuyTriggered={BuyTriggered} onSellTriggered={sellTriggered} deleteWatchlist={deleteWatchlist} />
           ))
         }
       </ul>
@@ -95,3 +101,6 @@ export default function WatchList(){
     </div>
   )
 }
+
+
+export default WatchList;
