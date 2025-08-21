@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 # Settings
-TICKERS = ["AAPL", "GOOG", "MSFT", "NVDA", "AMZN", "ADBE", "IBM", "META", "TSLA"]
+TICKERS = ["AAPL", "GOOG", "MSFT", "NVDA", "AMZN", "ADBE", "IBM", "META", "TSLA","HPQ"]
 FEATURES = ["Open", "High", "Low", "Close"]
 MODELS_DIR = Path(".")
 
