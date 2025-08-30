@@ -1,14 +1,26 @@
 const {holding} = require('../models/HoldingModel');
 const {getStockQuote} = require('../services/finnhub');
+const { requireAuth } = require('../util/AuthMiddleware');
+const { getUserFunds, updateUserFunds } = require('../util/FundsController');
 const express = require('express');
 const router = express.Router();
 
-router.get('/allHoldings',async (req,res)=>{
-  res.json(await holding.find({}));
+router.get('/allHoldings', requireAuth, async (req,res)=>{
+  // Only get holdings for the current user
+  res.json(await holding.find({ userId: req.user._id }));
   
 });
-let addHolding = async (name,qty,price)=>{
-  const existingStock = await holding.findOne({name});
+let addHolding = async (name, qty, price, userId) => {
+  // Calculate total cost
+  const totalCost = price * qty;
+  
+  // Check if user has sufficient funds
+  const currentFunds = await getUserFunds(userId);
+  if (currentFunds < totalCost) {
+    throw new Error(`Insufficient funds. You have $${currentFunds} but need $${totalCost}`);
+  }
+  
+  const existingStock = await holding.findOne({ name, userId });
   
   if(existingStock) {
     // Update existing holding: calculate new average price and total quantity
@@ -16,7 +28,7 @@ let addHolding = async (name,qty,price)=>{
     const totalInvestment = existingStock.invested + (price * qty);
     const loss = totalInvestment>(totalQty*price);
     const updatedHolding = await holding.findOneAndUpdate(
-      {name},
+      { name, userId },
       {
         qty: totalQty,
         invested: totalInvestment,
@@ -29,6 +41,7 @@ let addHolding = async (name,qty,price)=>{
   } else {
     // Create new holding
     const newHolding = new holding({
+      userId,  // Add userId when creating new holding
       name,
       qty,
       invested: price*qty,
@@ -40,6 +53,16 @@ let addHolding = async (name,qty,price)=>{
     
     await newHolding.save();
   }
+  
+  // Deduct funds from user account
+  const newFunds = currentFunds - totalCost;
+  await updateUserFunds(userId, newFunds);
+  
+  return {
+    message: `Successfully bought ${qty} shares of ${name}`,
+    totalCost: totalCost,
+    remainingFunds: newFunds
+  };
 }
 
 // Function to update all holdings with real-time data from Finnhub
@@ -87,9 +110,9 @@ const updateHoldingsWithRealTimeData = async () => {
 };
 
 // Function to sell holdings
-const sellHolding = async (name, qty, sellPrice = null) => {
+const sellHolding = async (name, qty, sellPrice = null, userId) => {
   try {
-    const existingStock = await holding.findOne({name});
+    const existingStock = await holding.findOne({ name, userId });
     
     if (!existingStock) {
       throw new Error(`You don't own any shares of ${name}`);
@@ -123,7 +146,7 @@ const sellHolding = async (name, qty, sellPrice = null) => {
     
     if (existingStock.qty === qty) {
       // Selling all shares - remove the holding completely
-      await holding.findOneAndDelete({name});
+      await holding.findOneAndDelete({ name, userId });
       console.log(`Sold all ${qty} shares of ${name}. Holding removed.`);
     } else {
       // Selling partial shares - update the holding
@@ -137,7 +160,7 @@ const sellHolding = async (name, qty, sellPrice = null) => {
       }
       
       await holding.findOneAndUpdate(
-        {name},
+        { name, userId },
         {
           qty: remainingQty,
           invested: remainingInvestment,
@@ -149,12 +172,19 @@ const sellHolding = async (name, qty, sellPrice = null) => {
       console.log(`Sold ${qty} shares of ${name}. ${remainingQty} shares remaining.`);
     }
     
+    // Add funds from sale to user account
+    const saleValue = qty * currentPrice;
+    const currentFunds = await getUserFunds(userId);
+    const newFunds = currentFunds + saleValue;
+    await updateUserFunds(userId, newFunds);
+    
     return {
       message: `Successfully sold ${qty} shares of ${name}`,
       soldQuantity: qty,
       soldPrice: currentPrice,
-      totalValue: qty * currentPrice,
-      avgPrice: avgPrice
+      totalValue: saleValue,
+      avgPrice: avgPrice,
+      newFunds: newFunds
     };
     
   } catch (error) {

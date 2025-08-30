@@ -1,91 +1,82 @@
 const express = require('express');
 const {pending} = require('../models/PendingModel');
-const {addHolding} = require('./holdings');
+const {addHolding, sellHolding} = require('./holdings');
 const { order } = require('../models/OrderModel');
+const { requireAuth } = require('../util/AuthMiddleware');
 const router = express.Router();
-const {finnhubClient} = require('../services/finnhub');
+const {getStockQuote} = require('../services/finnhub');
 
-router.post('/pending', async (req,res)=>{
-  let newPending = new pending({
-    name:req.body.name,
-    price:req.body.price
-  })
-  newPending.save()
-})
-// Add route to manually trigger pending order processing
-router.post('/process-pending', async (req, res) => {
-  try {
-    await processPendingOrders();
-    res.json({ message: 'Pending orders processed successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+// Get user's pending orders
+router.get('/', requireAuth, async (req, res) => {
+  const userPendingOrders = await pending.find({ userId: req.user._id });
+  res.json(userPendingOrders);
 });
 
 const processPendingOrders = async () => {
-  try {
-    // Get all pending orders
-    const pendingOrders = await pending.find({});
-    
-    if (pendingOrders.length === 0) {
-      console.log('No pending orders to process');
-      return;
+  console.log('Starting to process pending orders...');
+  
+  // Get all pending orders
+  const pendingOrders = await pending.find({});
+  
+  if (pendingOrders.length === 0) {
+    console.log('No pending orders to process');
+    return;
+  }
+
+  console.log(`Processing ${pendingOrders.length} pending orders...`);
+
+  for (const pendingOrder of pendingOrders) {
+    const stockData = await getStockQuote(pendingOrder.name);
+    const currentPrice = stockData.c; // Use raw Finnhub format
+    const targetPrice = pendingOrder.targetPrice;
+    const mode = pendingOrder.mode;
+
+    console.log(`Checking ${pendingOrder.name}: Current=${currentPrice}, Target=${targetPrice}, Mode=${mode}`);
+
+    let shouldExecute = false;
+
+    // Determine if order should be executed
+    if (mode === 'BUY' && currentPrice <= targetPrice) {
+      shouldExecute = true; // Buy when price drops to target or below
+    } else if (mode === 'SELL' && currentPrice >= targetPrice) {
+      shouldExecute = true; // Sell when price rises to target or above
     }
 
-    await Promise.all(
-      pendingOrders.map(async (pendingOrder) => {
-        return new Promise((resolve, reject) => {
-          finnhubClient.quote(pendingOrder.name, async (error, data) => {
-            try {
-              if (error) {
-                console.error(`Error fetching price for ${pendingOrder.name}:`, error);
-                reject(error);
-                return;
-              }
+    if (shouldExecute) {
+      console.log(`Executing ${mode} order for ${pendingOrder.name} at ${currentPrice}`);
+      
+      let result;
+      if (mode === 'BUY') {
+        result = await addHolding(pendingOrder.name, pendingOrder.qty, currentPrice, pendingOrder.userId);
+      } else if (mode === 'SELL') {
+        result = await sellHolding(pendingOrder.name, pendingOrder.qty, currentPrice, pendingOrder.userId);
+      }
 
-              const currentPrice = data.c; // Current price from Finnhub
-              const orderPrice = pendingOrder.price;
-
-              // Check if current price is lower than or equal to order price
-              if (currentPrice <= orderPrice) {
-                console.log(`Price condition met for ${pendingOrder.name}: Current: ${currentPrice}, Order: ${orderPrice}`);
-                
-                // Remove from pending collection
-                await pending.deleteOne({ _id: pendingOrder._id });
-                
-                // Update the order to set isPending to false
-                await order.updateOne(
-                  { 
-                    name: pendingOrder.name, 
-                    price: pendingOrder.price,
-                    isPending: true 
-                  },
-                  { 
-                    isPending: false 
-                  }
-                );
-                const orderDoc = await order.findOne({ name: pendingOrder.name, price: pendingOrder.price });
-                addHolding(pendingOrder.name, orderDoc.qty, pendingOrder.price);
-                console.log(`Processed pending order for ${pendingOrder.name}`);
-              }
-              
-              resolve();
-            } catch (updateError) {
-              console.error(`Error processing pending order for ${pendingOrder.name}:`, updateError);
-              reject(updateError);
-            }
-          });
-        });
-      })
-    );
-
-    console.log('Finished processing pending orders');
-  } catch (err) {
-    console.error('Error in processPendingOrders:', err);
+      // Update the original order to mark as executed
+      await order.updateOne(
+        { 
+          userId: pendingOrder.userId,
+          name: pendingOrder.name, 
+          isPending: true,
+          mode: mode
+        },
+        { 
+          isPending: false,
+          price: currentPrice // Update with actual execution price
+        }
+      );
+      
+      // Remove from pending collection (order completed)
+      await pending.deleteOne({ _id: pendingOrder._id });
+      
+      console.log(`✓ Executed ${mode} order: ${pendingOrder.qty} shares of ${pendingOrder.name} at $${currentPrice}`);
+    }
   }
+
+  console.log('Finished processing pending orders');
 };
 
 module.exports = {
-  pending:router,
+  pending: router,
   processPendingOrders
 };

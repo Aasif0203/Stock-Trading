@@ -1,100 +1,74 @@
 const {order} = require('../models/OrderModel');
 const {holding, addHolding, sellHolding} = require('./holdings')
+const { requireAuth } = require('../util/AuthMiddleware');
 const express = require('express');
 const router = express.Router();
 const {pending} = require('../models/PendingModel');
 
-router.post('/addOrder', async (req, res) => {
-  try {
-    const { name, qty, price, mode, pending } = req.body;
+router.post('/addOrder', requireAuth, async (req, res) => {
+  const { name, qty, price, mode, isPending } = req.body;
+  
+  // Always create an order record first
+  const newOrder = new order({
+    userId: req.user._id,
+    name: name,
+    qty: qty,
+    price: price,
+    mode: mode.toUpperCase(),
+    isPending: isPending || false,
+    day: new Date().toDateString(),
+    time: new Date().toTimeString().split(' ')[0],
+  });
+  
+  const savedOrder = await newOrder.save();
+  
+  if (isPending) {
+    // For limit orders, also save to pending collection for tracking
+    const newPending = new pending({
+      userId: req.user._id,
+      name: name,
+      targetPrice: price,
+      qty: qty,
+      mode: mode.toUpperCase()
+    });
+    await newPending.save();
     
-    // Validation
-    if (!name || !qty || !mode) {
-      throw new Error('Name, quantity, and mode are required');
-    }
-    
-    if (qty <= 0) {
-      throw new Error('Quantity must be positive');
-    }
-    
-    if (!['BUY', 'SELL'].includes(mode.toUpperCase())) {
-      throw new Error('Mode must be either BUY or SELL');
-    }
-    
-    // For BUY orders, price is mandatory
-    if (mode.toUpperCase() === 'BUY' && (!price || price <= 0)) {
-      throw new Error('Price is required for BUY orders and must be positive');
-    }
-    
-    // For SELL orders, price is optional (will get from Finnhub if not provided)
-    if (mode.toUpperCase() === 'SELL' && price && price <= 0) {
-      throw new Error('If price is provided for SELL orders, it must be positive');
-    }
-    
-    // Execute order immediately
+    res.json({
+      message: `Limit order for ${name} placed. Will ${mode.toLowerCase()} ${qty} shares when price reaches $${price}`,
+      order: savedOrder,
+      pendingOrder: newPending
+    });
+  } else {
+    // Execute order immediately (market order)
     let result;
-    let actualPrice = price;
     
     if (mode.toUpperCase() === 'BUY') {
-      result = await addHolding(name, qty, price);
-      actualPrice = price;
+      result = await addHolding(name, qty, price, req.user._id);
     } else if (mode.toUpperCase() === 'SELL') {
-      result = await sellHolding(name, qty, price); // sellHolding will get real-time price if price is null
-      actualPrice = result.soldPrice; // Use the actual price from sellHolding
+      result = await sellHolding(name, qty, price, req.user._id);
     }
     
-    // Create order record with actual price used
-    const newOrder = new order({
-      name: name,
-      qty: qty,
-      price: actualPrice,
-      mode: mode.toUpperCase(),
-      isPending: pending || false,
-      day: new Date().toDateString(),
-      time: new Date().toTimeString().split(' ')[0],
-    });
-    
-    const savedOrder = await newOrder.save();
-    console.log('Order saved:', savedOrder._id);
-    
-    if (pending) {
-      // Handle pending orders
-      const newPending = new pending({
-        name: name,
-        price: actualPrice,
-        mode: mode.toUpperCase(),
-        qty: qty
-      });
-      await newPending.save();
-      
+    // Send response based on order type
+    if (mode.toUpperCase() === 'BUY') {
       res.json({
-        message: `${mode.toUpperCase()} order for ${name} added to pending orders`,
-        order: savedOrder
+        message: `Successfully bought ${qty} shares of ${name}`,
+        order: savedOrder,
+        totalCost: result.totalCost,
+        remainingFunds: result.remainingFunds
       });
-    } else {
-      // Send response based on order type
-      if (mode.toUpperCase() === 'BUY') {
-        res.json({
-          message: `Successfully bought ${qty} shares of ${name}`,
-          order: savedOrder,
-          holding: result
-        });
-      } else if (mode.toUpperCase() === 'SELL') {
-        res.json({
-          message: result.message,
-          order: savedOrder,
-          soldDetails: result
-        });
-      }
+    } else if (mode.toUpperCase() === 'SELL') {
+      res.json({
+        message: result.message,
+        order: savedOrder,
+        totalReceived: result.totalValue,
+        newFunds: result.newFunds
+      });
     }
-    
-  } catch (error) {
-    console.error('Error processing order:', error.message);
-    res.status(400).json({ error: error.message });
   }
 });
-router.get('/allOrders', async (req,res)=>{
-  res.json(await order.find({}));
+router.get('/allOrders', requireAuth, async (req,res)=>{
+  // Only get orders for current user
+  res.json(await order.find({ userId: req.user._id }));
 })
 
 module.exports = router;

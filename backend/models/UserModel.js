@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Your password is required"],
   },
+  funds: {
+    type: Number,
+    default: 10000, 
+    min: [0, "Funds cannot be negative"],
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: new Date(),
@@ -22,6 +28,7 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 12);
 });
 
